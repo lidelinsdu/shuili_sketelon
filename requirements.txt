@@ -1,0 +1,6 @@
+fastapi~=0.115.13
+uvicorn
+pandas~=2.3.0
+numpy~=2.0.2
+statsmodels~=0.14.4
+requests~=2.32.4
