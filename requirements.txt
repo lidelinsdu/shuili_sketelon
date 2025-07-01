@@ -1,6 +1,12 @@
 fastapi~=0.115.13
-uvicorn
+uvicorn~=0.34.3
 pandas~=2.3.0
-numpy~=2.0.2
+numpy~=1.26.0
 statsmodels~=0.14.4
 requests~=2.32.4
+matplotlib~=3.9.4
+GDAL~=3.7.1
+scikit-learn~=1.6.1
+scipy~=1.13.1
+seaborn~=0.13.2
+pillow~=11.2.1

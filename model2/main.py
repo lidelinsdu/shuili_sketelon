@@ -276,6 +276,8 @@ def sun_duration(sunrise, sunset):
 # 只能预测未来30天内的作物需水，没有时间更长的天气预报
 def predict_e(kind, plant_d, begin_d, end_d, datalist):
     # 单位：mm
+    if kind not in ["corn", "vegetable", "wheat"]:
+        return "未知类型"
     if dt.datetime.now() > dt.datetime.strptime(begin_d, "%Y-%m-%d"):
         return "日期错误，过去的日期不需要预测"
     if dt.datetime.strptime(end_d, "%Y-%m-%d") > dt.datetime.now() + timedelta(days=30):
@@ -333,6 +335,14 @@ def predict_e(kind, plant_d, begin_d, end_d, datalist):
 
 
 def request_E(plant_d, begin_d, end_d, kind="wheat"):
+    """
+    请求计算需水量， 只能通过未来的30d天气预报相对准确预测未来需水量
+    :param plant_d: 种植日期
+    :param begin_d: 需求开始日期
+    :param end_d: 需求结束日期
+    :param kind: 作物类型，枚举：【"wheat", "vegetable", "corn】
+    :return: 返回每日需水量与总需水量的json
+    """
     data = get_weather_prediction("30d")['daily']
     res = predict_e(kind, plant_d, begin_d, end_d, data)
     print(json.dumps(res))
