@@ -10,3 +10,5 @@ scikit-learn~=1.6.1
 scipy~=1.13.1
 seaborn~=0.13.2
 pillow~=11.2.1
+starlette~=0.46.2
+pydantic~=2.11.7

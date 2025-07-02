@@ -3,13 +3,20 @@ import math
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+from model1.hefeng_weather_predict import request_weather
+
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams.update({'font.size': 10})  # 设置字体大小
+
 from PIL import Image
 from osgeo import gdal
 from scipy.stats import linregress
 import seaborn as sns
 
 MINUS_RATE = 1.08
-HEATMAP_DIR = "heatmap"
+HEATMAP_DIR = "model5/heatmap/"
 
 
 def create_example(is_write=False):
@@ -193,13 +200,13 @@ def nir_red_to_smi(red_band_file, nir_band_file):
     red_masked = red[mask]
     nir_masked = nir[mask]
 
-    # # 绘制散点图
-    plt.scatter(red_masked, nir_masked, s=1, c='gray', alpha=0.5)
+    # 绘制散点图
+    # plt.scatter(red_masked, nir_masked, s=1, c='gray', alpha=0.5)
 
     # 土壤线
     x = np.linspace(0, 0.5, 400)
     k, b = extract_soil_line(red, nir)
-    plt.plot(x, x * k + b, 'r-', label='soil Edge')
+    # plt.plot(x, x * k + b, 'r-', label='soil Edge')
     print(f'土壤线：NIR={k:.2f}RED+{b:.4f}')
 
     # L = (-1 / k) * x
@@ -244,22 +251,24 @@ def smmrs(red, nir, m, ):
     return 1 - a * (red + m * nir)
 
 
-def plot_heatmap(smi_2d):
+def plot_heatmap(smi_2d, filename="test"):
     """
     绘制土壤含水量热度图
+    :param filename: 希望保存的文件名
     :param smi_2d: 土壤含水量2d数组
-    :return:
+    :return: 文件路径
     """
     plt.figure()
 
     # 使用 seaborn 的 heatmap 函数进行绘图
     sns.heatmap(smi_2d, annot=False, cmap='viridis', cbar=True)
 
-    plt.title("含水量分布图")
+    plt.title(f"{filename}含水量分布图")
     plt.tight_layout()
-    filename = f"{HEATMAP_DIR}/smi_heatmap.png"
+    filename = f"{HEATMAP_DIR}{filename}.png"
+    # with open(filename, "wb") as f:
     plt.savefig(filename)
-    plt.show()
+    # plt.show()
     return filename
 
 
@@ -273,8 +282,34 @@ def get_dynamic_smi(file_list):
     return smi_list
 
 
+def get_continuous_dry_day() -> dict:
+    day_list = request_weather()
+    no_rain_day = []
+    for i in day_list:
+        if i["precip"] == "0" or i["precip"] == "0.0" or int(i["precip"]) == 0:
+            no_rain_day.append(i["date"])
+            continue
+        else:
+            break
+    return {
+        "count": len(no_rain_day),
+        "no_rain_day_list": no_rain_day,
+    }
+
+
+def get_rain_avg_lap_rate(span: str, history_avg, precip_list, ):
+    precip_sum = 0
+    for precip in precip_list:
+        precip_sum += precip["precip"]
+
+    day_count = len(precip_list)
+    history_sum = day_count * history_avg
+    rate = (precip_sum - history_sum) / history_sum
+    return f"{rate:.4f}"
+
+
 if __name__ == '__main__':
     red_file_dir = "tifs/DJI_20230215104141_0058_MS_R.TIF"
     nir_file_dir = "tifs/DJI_20230215104143_0059_MS_NIR.TIF"
     smi = nir_red_to_smi(red_file_dir, nir_file_dir)
-    plot_heatmap(smi)
+    plot_heatmap(smi, )
