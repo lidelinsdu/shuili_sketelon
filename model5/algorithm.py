@@ -9,6 +9,7 @@ from scipy.stats import linregress
 import seaborn as sns
 
 MINUS_RATE = 1.08
+HEATMAP_DIR = "heatmap"
 
 
 def create_example(is_write=False):
@@ -256,18 +257,23 @@ def plot_heatmap(smi_2d):
 
     plt.title("含水量分布图")
     plt.tight_layout()
+    filename = f"{HEATMAP_DIR}/smi_heatmap.png"
+    plt.savefig(filename)
     plt.show()
+    return filename
+
+
+def get_dynamic_smi(file_list):
+    smi_list = []
+    for i in file_list:
+        red_file = i["red_dir"]
+        nir_file = i["nir_dir"]
+        smi = nir_red_to_smi(red_file, nir_file)
+        smi_list.append(smi)
+    return smi_list
 
 
 if __name__ == '__main__':
-    # create_example()
-    # data = create_example()
-    # print_data(data)
-    # file_path = 'example.json'
-    # with open(file_path, 'r', encoding='utf-8') as f:
-    #     data = json.load(f)
-    # out = init(data)
-    # print_data(out)
     red_file_dir = "tifs/DJI_20230215104141_0058_MS_R.TIF"
     nir_file_dir = "tifs/DJI_20230215104143_0059_MS_NIR.TIF"
     smi = nir_red_to_smi(red_file_dir, nir_file_dir)
