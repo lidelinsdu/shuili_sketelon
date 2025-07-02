@@ -193,12 +193,12 @@ def nir_red_to_smi(red_band_file, nir_band_file):
     nir_masked = nir[mask]
 
     # # 绘制散点图
-    # plt.scatter(red_masked, nir_masked, s=1, c='gray', alpha=0.5)
+    plt.scatter(red_masked, nir_masked, s=1, c='gray', alpha=0.5)
 
     # 土壤线
     x = np.linspace(0, 0.5, 400)
     k, b = extract_soil_line(red, nir)
-    # plt.plot(x, y, 'r-', label='soil Edge')
+    plt.plot(x, x * k + b, 'r-', label='soil Edge')
     print(f'土壤线：NIR={k:.2f}RED+{b:.4f}')
 
     # L = (-1 / k) * x
@@ -222,10 +222,12 @@ def nir_red_to_smi(red_band_file, nir_band_file):
     # plt.title('NIR-Red Feature Space with Dry/Wet Edges')
     # plt.show()
 
-    smi = np.zeros((width, height), dtype=np.float32)
-    for i in range(width):
-        for j in range(height):
-            smi[i, j] = smmrs(red_masked[i * width + j], nir_masked[i * width + j], k)
+    smi = np.zeros_like(red)
+    # for i in range(width):
+    #     for j in range(height):
+    #         smi[i, j] = smmrs(red_masked[i * width + j], nir_masked[i * width + j], k)
+    smi = smmrs(red, nir, k)
+    # plt.scatter(red_masked, smi, c='red', alpha=0.5)
     return smi
 
 
@@ -266,7 +268,7 @@ if __name__ == '__main__':
     #     data = json.load(f)
     # out = init(data)
     # print_data(out)
-    red_file_dir = "tifs/DJI_20230215104306_0100_MS_R.TIF"
-    nir_file_dir = "tifs/DJI_20230215104306_0100_MS_NIR.TIF"
+    red_file_dir = "tifs/DJI_20230215104141_0058_MS_R.TIF"
+    nir_file_dir = "tifs/DJI_20230215104143_0059_MS_NIR.TIF"
     smi = nir_red_to_smi(red_file_dir, nir_file_dir)
     plot_heatmap(smi)

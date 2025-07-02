@@ -90,7 +90,8 @@ def flood_drought_defend_get_smi(red_tif_dir, nir_tif_dir):
     :param nir_tif_dir: 近红外tif路径
     :return: 土壤含水量二维数组
     """
-    return nir_red_to_smi(red_tif_dir, nir_tif_dir)
+    smi = nir_red_to_smi(red_tif_dir, nir_tif_dir)
+    return
 
 @app.get('/flood_drought_defend/draw_heatmap')
 def draw_heatmap(smi_2d_data):
