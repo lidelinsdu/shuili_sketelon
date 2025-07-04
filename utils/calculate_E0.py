@@ -66,9 +66,15 @@ def do_main_calculate():
 
 
 def ave_e0():
-    save_file_dir = f"{SAVE_E0_DIR}ave_e0.csv"
+    save_file_dir = f"ave_e0.csv"
     fn_list = []
     weight = []  ## 添加权重， 后十年占多0.2
+    for i in range(20):
+        if i < 10:
+            weight.append(0.9)
+        else:
+            weight.append(1.1)
+    print(sum(weight))
     for path, _, files in os.walk(SAVE_E0_DIR):
         for file in files:
             filename = os.path.join(path, file)
@@ -77,16 +83,17 @@ def ave_e0():
     for d in iterate_year_days():
         print(f"处理日期{d}")
         e0_sum = 0.0
-        count = 0
+        count = 0.0
         for year, filename in fn_list:
             # print(f"处理文件{filename}")
+            i = (year-2024)+19
             data = pd.read_csv(filename)
             for index, row in data.iterrows():
                 f_date = dt.datetime.strptime(row["date"], "%Y-%m-%d")
                 target_date = d - relativedelta(years=(2024 - year))
                 if f_date == target_date:
-                    e0_sum += row["E0"]
-                    count += 1
+                    e0_sum += row["E0"] * weight[i]
+                    count += weight[i]
                     break
         ave = round(e0_sum / count, 4)
         ave_e0_list.loc[len(ave_e0_list)] = [d, ave]
