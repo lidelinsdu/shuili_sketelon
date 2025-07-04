@@ -4,6 +4,7 @@ import datetime as dt
 import re
 from datetime import timedelta
 import pandas
+import pandas as pd
 import requests
 
 param = {
@@ -211,7 +212,7 @@ r为湿度计常数，kPa/℃。
 """
 
 
-def PM_ET0(Tmax, Tmin, P, u2, N):
+def PM_ET0(Tmax, Tmin, P, u2, N, now: dt.datetime):
     # Tmax、Tmin、Tmean为最高、最低、平均气温；Tdew为露点温度；P为本站气压;u2为2m风速;Rn为净辐射
     Tmean = 0.5 * (Tmax + Tmin)
     # 土壤热通量
@@ -228,8 +229,6 @@ def PM_ET0(Tmax, Tmin, P, u2, N):
     r = 0.0677  # 修正自https://www.sciencedirect.com/science/article/pii/S0378377409003436#aep-section-id16
     # ET0 = ( 0.408*delta*(Rn-G) + r*900*u2*(es-ea)/(Tmean+273) )/( delta + r*(1 + 0.34*u2) )
 
-    # 当前时间
-    now = dt.datetime.now()
     # 天文辐射
     Ra = cal_Ra(now.year, now.month, now.day)
     # 入射太阳辐射量
@@ -250,8 +249,8 @@ def PM_ET0(Tmax, Tmin, P, u2, N):
 
 
 def grow_days(plant_d, predict_d):
-    d1 = dt.datetime.strptime(plant_d, "%Y-%m-%d").date()
-    d2 = dt.datetime.strptime(predict_d, "%Y-%m-%d").date()
+    d1 = plant_d.date()
+    d2 = predict_d.date()
     days = (d2 - d1).days
     return days
 
@@ -276,65 +275,60 @@ def sun_duration(sunrise, sunset):
 # 只能预测未来30天内的作物需水，没有时间更长的天气预报
 def predict_e(kind, plant_d, begin_d, end_d, datalist):
     # 单位：mm
-    if kind not in ["corn", "vegetable", "wheat"]:
+    if kind not in ["corn", "vegetable", "wheat", "peanut", "cotton"]:
         return "未知类型"
-    if dt.datetime.now() > dt.datetime.strptime(begin_d, "%Y-%m-%d"):
+    if dt.datetime.now() > begin_d + dt.timedelta(days=1):
         return "日期错误，过去的日期不需要预测"
-    if dt.datetime.strptime(end_d, "%Y-%m-%d") > dt.datetime.now() + timedelta(days=30):
+    if end_d > dt.datetime.now() + timedelta(days=30):
         return "日期错误, end_day请选择未来30天内的日期"
-    if dt.datetime.strptime(plant_d, "%Y-%m-%d") > dt.datetime.strptime(begin_d, "%Y-%m-%d"):
+    if plant_d > begin_d:
         return "日期错误"
-    if dt.datetime.strptime(begin_d, "%Y-%m-%d") > dt.datetime.strptime(end_d, "%Y-%m-%d"):
+    if begin_d > end_d:
         return "日期错误"
-    kind_list = ["corn", "wheat", "vegetable"]
-    if kind not in kind_list:
-        return f"作物种类错误，只能选择{kind_list}"
-    days = grow_days(plant_d, end_d)
+    now = dt.datetime.now()
+    days = grow_days(now, end_d)
     if len(datalist) < days:
         return "数据长度小于预测天数，请检查上传的数据"
     E = 0
     E_list = []
-    with open('data.json', 'r', encoding='utf-8') as f:
+    with open('model2/data.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
     Kc_list = data["Kc"][kind]
     # Kc分界点
-    date_split = [dt.datetime.strptime(plant_d, "%Y-%m-%d") + timedelta(days=int(i)) for i in Kc_list]
-    day_i = dt.datetime.strptime(begin_d, "%Y-%m-%d").date()  # yyyy-mm-dd
-    day_list = [dt.datetime.strptime(plant_d, "%Y-%m-%d") + timedelta(days=i) for i in range(days)]
+    date_split = [plant_d + timedelta(days=int(i)) for i in Kc_list]
+    day_i = begin_d  # yyyy-mm-dd
+    day_list = [plant_d + timedelta(days=i) for i in range(days)]
     kc_values = list(Kc_list.values())
     categories = pandas.cut(day_list, date_split).codes
     kc_for_days = [kc_values[i + 1] for i in categories]
 
     for i in range(days):
-        data_i_list = list(filter(lambda x: str(x['fxDate']) == str(day_i), datalist))
+        data_i_list = list(filter(lambda x: str(x['fxDate']) == dt.datetime.strftime(day_i, "%Y-%m-%d"), datalist))
         if len(data_i_list) == 0:
             continue
         data_i = data_i_list[0]
-        Tmax = int(data_i['tempMax'])
-        Tmin = int(data_i['tempMin'])
-        sunrise = data_i['sunrise']
-        sunset = data_i['sunset']
+        Tmax = int(data_i['tempMax'])  # 最高气温
+        Tmin = int(data_i['tempMin'])  # 最低气温
+        sunrise = data_i['sunrise']  # 日出时间
+        sunset = data_i['sunset']  # 日落时间
         sunduration = sun_duration(sunrise, sunset)
-        P = float(data_i['pressure']) * 0.1
-        u2 = float(data_i['windSpeedDay'])
-        E0 = PM_ET0(Tmax, Tmin, P, u2, sunduration)
+        P = float(data_i['pressure']) * 0.1  # 气压
+        u2 = float(data_i['windSpeedDay'])  # 风俗
+        E0 = PM_ET0(Tmax, Tmin, P, u2, sunduration, dt.datetime.now())
         Kc = kc_for_days[i]
         # 计算读取Kc
         E_i = Pm_E(Kc, E0)
         E += E_i
         obj = {
             "date": day_i.strftime("%Y-%m-%d"),
-            "E": E_i
+            "smi": E_i
         }
         E_list.append(obj)
         day_i = day_i + timedelta(days=1)  # 计算后一天
-    return {
-        "E_list": E_list,
-        "ALL_E": E
-    }
+    return E_list
 
 
-def request_E(plant_d, begin_d, end_d, kind="wheat"):
+def request_smi_predict(plant_d, begin_d, end_d, kind="wheat"):
     """
     请求计算需水量， 只能通过未来的30d天气预报相对准确预测未来需水量
     :param plant_d: 种植日期
@@ -345,8 +339,59 @@ def request_E(plant_d, begin_d, end_d, kind="wheat"):
     """
     data = get_weather_prediction("30d")['daily']
     res = predict_e(kind, plant_d, begin_d, end_d, data)
-    print(json.dumps(res))
+    return res
+
+
+def request_smi_experiential(plant_d, begin_d, end_d, kind="wheat"):
+    if begin_d >= end_d:
+        return 0
+    if kind not in ["corn", "vegetable", "wheat", "peanut", "cotton"]:
+        return "未知类型"
+
+    with open('model2/data.json', 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    sun_dura = data['sun_duration']  # 日照时间
+    Kc_list = data["Kc"][kind]
+    days = grow_days(plant_d, end_d)
+    # Kc分界点
+    date_split = [plant_d + timedelta(days=int(i)) for i in Kc_list]
+    day_i = begin_d.date()  # yyyy-mm-dd
+    day_list = [plant_d + timedelta(days=i) for i in range(days)]
+    kc_values = list(Kc_list.values())
+    categories = pandas.cut(day_list, date_split).codes
+    kc_for_days = [kc_values[i + 1] for i in categories]
+    with open('model2/ave_e0.csv', 'r', encoding='utf-8') as f:
+        df = pd.read_csv(f)
+
+    plant_day = plant_d
+    day_cursor = begin_d  # 从这一天开始计算
+    end_day = end_d
+    smi_list = []
+    kc_index = (day_cursor - plant_day).days
+    for i in range(len(kc_for_days)):
+        if day_cursor >= end_day:
+            break
+        month_cursor = day_cursor.month
+        day_c = day_cursor.day
+        search_day_model = dt.datetime(2024, month_cursor, day_c)
+
+        e0_from_file = float(df[pd.to_datetime(df['date']) == search_day_model]['E0_ave'])
+        smi = {
+            "date": day_cursor.strftime("%Y-%m-%d"),
+            "smi": round(e0_from_file * kc_for_days[kc_index], 2),
+        }
+        smi_list.append(smi)
+        day_cursor = day_cursor + timedelta(days=1)
+        kc_index += 1
+
+    return smi_list
+
+
+def calculate_et0():
+    return
 
 
 if __name__ == '__main__':
-    request_E("2025-6-14", "2025-6-25", "2025-7-13")
+    request_smi_predict("2025-7-1", "2025-7-4", "2025-7-13")
+    res = request_smi_experiential("2025-7-1", "2025-7-4", "2026-7-13")
+    print(res)
