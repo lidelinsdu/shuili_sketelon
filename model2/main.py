@@ -256,7 +256,7 @@ def grow_days(plant_d, predict_d):
 
 
 def Pm_E(Kc, E0):
-    return Kc * E0
+    return round(Kc * E0, 2)
 
 
 def sun_duration(sunrise, sunset):

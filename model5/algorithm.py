@@ -286,7 +286,7 @@ def get_continuous_dry_day() -> dict:
     day_list = request_weather()
     no_rain_day = []
     for i in day_list:
-        if i["precip"] == "0" or i["precip"] == "0.0" or int(i["precip"]) == 0:
+        if i["precip"] == "0" or i["precip"] == "0.0" or float(i["precip"]) == 0.0:
             no_rain_day.append(i["date"])
             continue
         else:

@@ -18,7 +18,7 @@ def water_predict(plant_day, begin_day, end_day, kind):
     :param plant_day: 种植日期
     :param begin_day: 开始日期
     :param end_day: 结束日期
-    :param kind: 作物类型，枚举
+    :param kind: 作物类型，枚举["wheat", "corn", "cotton", "vegetable", "peanut"]
     :return: 给出单株植物每日需水序列以及总需水量
     """
     plant_d = dt.datetime.strptime(plant_day, "%Y-%m-%d")

@@ -1,0 +1,15 @@
+python main.py --mode annual --year 2019 --data data1.xlsx
+生成2019年年度水资源配置方案
+python main.py --mode monthly --year 2019 --month 7 --data data1.xlsx
+生成2019年1月月度水资源配置方案
+python main.py --mode dekad --year 2019 --month 1 --dekad 1 --data data1.xlsx
+生成2019年1月中上旬(第1旬)水资源配置方案
+
+
+未实现：
+python main.py --mode emergency --start-date 2024-07-15 --days 10 --drought-level 0.5 --data data1.xlsx
+生成从2024年7月15日开始，持续10天，干旱等级为0.5的应急抗旱配置方案
+python main.py --mode multi --year 2024 --data 水资源原始数据.xlsx
+生成2024年完整的年、月、旬三级水资源配置方案
+python main.py --mode dynamic --start-date 2024-07-15 --days 10 --drought-level 0.6 --data 水资源原始数据.xlsx
+生成从2024年7月15日开始，持续10天，干旱等级为0.6的动态调整配置方案

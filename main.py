@@ -3,15 +3,13 @@ from fastapi import FastAPI, APIRouter
 
 from model1.service import router_1
 from model2.service import router_2
+from model3.service import router_3
 from model5.service import router_5
 
 app = FastAPI()
 
 
-router_3 = APIRouter(
-    prefix="/model3",
-    tags=["水资源配置模型"]
-)
+
 router_4 = APIRouter(
     prefix="/model4",
     tags=["输配水调度模型"]
@@ -29,9 +27,7 @@ app.include_router(router_5)
 def hello():
     return '欢迎来到我的fastAPI应用！'
 
-@router_3.get('/water_allocation')
-def water_allocation():
-    return "hello world"
+
 
 
 @router_4.get('/water_dispatch')
