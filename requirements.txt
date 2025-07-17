@@ -17,3 +17,5 @@ pulp~=3.2.1
 plotly~=6.2.0
 pymoo~=0.6.0
 networkx~=3.2.1
+PyYAML~=6.0.2
+python-multipart

@@ -1,24 +1,13 @@
+import datetime as dt
 import json
 import math
-import datetime as dt
 import re
 from datetime import timedelta
+
 import pandas
 import pandas as pd
-import requests
 
-param = {
-    'location': '116.46,35.57'
-}
-headers = {
-    'X-QW-Api-Key': '1647396dc7214c62992c61940f9e64dd'
-}
-
-
-def get_weather_prediction(days):
-    res = requests.get(f'https://devapi.qweather.com/v7/weather/{days}', params=param, headers=headers)
-    return res.json()
-
+from utils.hefeng_weather_predict import request_weather
 
 # 纬度
 LAT = 35.57
@@ -212,7 +201,7 @@ r为湿度计常数，kPa/℃。
 """
 
 
-def PM_ET0(Tmax, Tmin, P, u2, N, now: dt.datetime):
+def PM_ET0(Tmax, Tmin, P, u2, now: dt.datetime):
     # Tmax、Tmin、Tmean为最高、最低、平均气温；Tdew为露点温度；P为本站气压;u2为2m风速;Rn为净辐射
     Tmean = 0.5 * (Tmax + Tmin)
     # 土壤热通量
@@ -309,12 +298,9 @@ def predict_e(kind, plant_d, begin_d, end_d, datalist):
         data_i = data_i_list[0]
         Tmax = int(data_i['tempMax'])  # 最高气温
         Tmin = int(data_i['tempMin'])  # 最低气温
-        sunrise = data_i['sunrise']  # 日出时间
-        sunset = data_i['sunset']  # 日落时间
-        sunduration = sun_duration(sunrise, sunset)
         P = float(data_i['pressure']) * 0.1  # 气压
         u2 = float(data_i['windSpeedDay'])  # 风俗
-        E0 = PM_ET0(Tmax, Tmin, P, u2, sunduration, dt.datetime.now())
+        E0 = PM_ET0(Tmax, Tmin, P, u2, dt.datetime.now())
         Kc = kc_for_days[i]
         # 计算读取Kc
         E_i = Pm_E(Kc, E0)
@@ -337,7 +323,7 @@ def request_smi_predict(plant_d, begin_d, end_d, kind="wheat"):
     :param kind: 作物类型，枚举：【"wheat", "vegetable", "corn】
     :return: 返回每日需水量与总需水量的json
     """
-    data = get_weather_prediction("30d")['daily']
+    data = request_weather()['daily']
     res = predict_e(kind, plant_d, begin_d, end_d, data)
     return res
 
@@ -350,7 +336,6 @@ def request_smi_experiential(plant_d, begin_d, end_d, kind="wheat"):
 
     with open('model2/data.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
-    sun_dura = data['sun_duration']  # 日照时间
     Kc_list = data["Kc"][kind]
     days = grow_days(plant_d, end_d)
     # Kc分界点

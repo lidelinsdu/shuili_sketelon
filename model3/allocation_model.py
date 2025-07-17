@@ -3,9 +3,7 @@ from datetime import timedelta
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import pulp
-import seaborn as sns
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.factory import get_reference_directions
@@ -771,7 +769,7 @@ class WaterResourceNSGAIII(WaterResourceBase):
                 parent_allocation[parent] = result["supply"][parent]
                 result["shortage"][parent] = max(0, yearly_demand[parent] - result["supply"][parent])
                 result["satisfaction"][parent] = (result["supply"][parent] / yearly_demand[parent]) * 100 if \
-                yearly_demand[parent] > 0 else 100
+                    yearly_demand[parent] > 0 else 100
 
         # 计算水源利用率
         for s in self.water_sources:
@@ -786,13 +784,13 @@ class WaterResourceNSGAIII(WaterResourceBase):
         all_node_allocation = self.distribute_water_to_children(parent_allocation, yearly_demand, result["allocation"])
         result["node_allocation"] = all_node_allocation
         result["node_flow_records"] = self.node_flow_records
-
+        file_dir_name = None
         if output:
             from model3.output_processor import OutputProcessor
             processor = OutputProcessor(self)
-            processor.output_yearly_result(result)  # 调用年度结果输出方法
+            file_dir_name = processor.output_yearly_result(result)  # 调用年度结果输出方法
 
-        return result
+        return result, file_dir_name
 
     def allocate_water_monthly(self, year, month, output=True):
         """生成月度水资源配置方案（NSGA-III优化）"""
@@ -859,7 +857,7 @@ class WaterResourceNSGAIII(WaterResourceBase):
                 parent_allocation[parent] = result["supply"][parent]
                 result["shortage"][parent] = max(0, monthly_demand[parent] - result["supply"][parent])
                 result["satisfaction"][parent] = (result["supply"][parent] / monthly_demand[parent]) * 100 if \
-                monthly_demand[parent] > 0 else 100
+                    monthly_demand[parent] > 0 else 100
 
         # 计算水源利用率
         for s in self.water_sources:
@@ -874,13 +872,13 @@ class WaterResourceNSGAIII(WaterResourceBase):
         all_node_allocation = self.distribute_water_to_children(parent_allocation, monthly_demand, result["allocation"])
         result["node_allocation"] = all_node_allocation
         result["node_flow_records"] = self.node_flow_records
-
+        file_dir_name = None
         if output:
-            from output_processor import OutputProcessor
+            from model3.output_processor import OutputProcessor
             processor = OutputProcessor(self)
-            processor._output_monthly_result(result)
+            file_dir_name = processor._output_monthly_result(result)
 
-        return result
+        return result, file_dir_name
 
     def allocate_water_dekad(self, year, month, dekad, output=True):
         """生成旬水资源配置方案（NSGA-III优化）"""
@@ -959,7 +957,7 @@ class WaterResourceNSGAIII(WaterResourceBase):
                 parent_allocation[parent] = result["supply"][parent]
                 result["shortage"][parent] = max(0, dekad_demand[parent] - result["supply"][parent])
                 result["satisfaction"][parent] = (result["supply"][parent] / dekad_demand[parent]) * 100 if \
-                dekad_demand[parent] > 0 else 100
+                    dekad_demand[parent] > 0 else 100
 
         # 计算水源利用率
         for s in self.water_sources:
@@ -974,10 +972,10 @@ class WaterResourceNSGAIII(WaterResourceBase):
         all_node_allocation = self.distribute_water_to_children(parent_allocation, dekad_demand, result["allocation"])
         result["node_allocation"] = all_node_allocation
         result["node_flow_records"] = self.node_flow_records
-
+        file_dir_name = None
         if output:
-            from output_processor import OutputProcessor
+            from model3.output_processor import OutputProcessor
             processor = OutputProcessor(self)
-            processor._output_dekad_result(result)
+            file_dir_name = processor._output_dekad_result(result)
 
-        return result
+        return result, file_dir_name

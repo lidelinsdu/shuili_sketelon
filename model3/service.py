@@ -1,5 +1,10 @@
-from fastapi import APIRouter
+import os
 import sys
+from typing import Optional
+
+from fastapi import APIRouter
+from starlette.responses import FileResponse
+
 import model3.main
 
 router_3 = APIRouter(
@@ -32,7 +37,7 @@ data1.xlsx需包含信息：
 
 
 @router_3.get("/get_allocate_xlsx")
-def get_allocate_xlsx(time_range: str, year: int, data: str, month: int = -1, dekad: int = -1, ):
+def get_allocate_xlsx(time_range: str, year: int, data: Optional[str] = None, month: Optional[int] = None, dekad: Optional[int] = None, ):
     """
     获取水资源配置方案，结果以xlsx文件保存
     :param time_range: 时间范围，枚举类型：[annual, monthly, dekad]
@@ -55,7 +60,19 @@ def get_allocate_xlsx(time_range: str, year: int, data: str, month: int = -1, de
         sys.argv.append(str(dekad))
     elif time_range != "annual":
         return "error"
-
-    sys.argv.append("--data")
-    sys.argv.append(data)
+    if data is not None:
+        sys.argv.append("--data")
+        sys.argv.append(data)
     return model3.main.main()
+
+
+# model3_output/2024年\\1月\\2024年1月水资源配置方案.xlsx
+@router_3.get("/download_allocate_xlsx")
+def download_allocate_xlsx(file_name_or_path: Optional[str]):
+    if os.path.exists(file_name_or_path):
+        return FileResponse(file_name_or_path, filename=file_name_or_path)
+    else:
+        return {"msg": "文件不存在"}
+
+
+

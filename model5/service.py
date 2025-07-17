@@ -1,8 +1,10 @@
 import io
 import json
 import os
+from typing import List
 
-from fastapi import APIRouter
+import yaml
+from fastapi import APIRouter, UploadFile, File
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
@@ -13,6 +15,9 @@ router_5 = APIRouter(
     prefix="/model5",
     tags=["水旱灾害防御模型"]
 )
+
+with open('config/configuration.yaml', 'r', encoding='utf-8') as f:
+    config = yaml.safe_load(f)['model5']
 
 
 @router_5.get('/get_smi')
@@ -38,20 +43,22 @@ def flood_drought_defend_get_smi(red_tif_dir, nir_tif_dir):
         }
     )
 
+
 class FileInfo(BaseModel):
     filename: str
     file_extension: str
     file_size: int
 
+
 @router_5.post('/draw_heatmap')
 async def draw_heatmap(obj: dict):
     """
     绘制热度图
-    :param obj: 包含土壤含水量数组的json
+    :param obj: 包含土壤含水量数组的json, 包括相对含水量二维数组smi: 2d-list和热度图的文件名filename: str
     :return: 热度图文件保存路径
     """
-    heatmap_file =  plot_heatmap(obj["smi"], obj["filename"])
-    stream = open(heatmap_file, "rb").read() # 返回bytes[]
+    heatmap_file = plot_heatmap(obj["smi"], obj["filename"])
+    stream = open(heatmap_file, "rb").read()  # 返回bytes[]
     filename = heatmap_file.split("/")[-1]
     name, ext = filename.split(".")
     size = os.path.getsize(heatmap_file)
@@ -61,7 +68,6 @@ async def draw_heatmap(obj: dict):
         media_type="image/png",
         headers={"FileInfo": file_info.model_dump_json()}
     )
-
 
 
 @router_5.get('/dynamic_smi')
@@ -74,7 +80,7 @@ def dynamic_smi(file_list):
     return get_dynamic_smi(file_list)
 
 
-@router_5.post('/get_continuous_no_rain_day')
+@router_5.get('/get_continuous_no_rain_day')
 def get_continuous_no_rain_day():
     """
     获得连续无雨日
@@ -83,7 +89,8 @@ def get_continuous_no_rain_day():
     encoded_data = json.dumps(get_continuous_dry_day())
     return encoded_data
 
-@router_5.post('/get_rain_avg_lap_rate')
+
+@router_5.get('/get_rain_avg_lap_rate')
 def get_rain_avg_lap_rate_service(span: str, history_avg, precip_list, ):
     """
     计算降雨距平指数
@@ -94,3 +101,19 @@ def get_rain_avg_lap_rate_service(span: str, history_avg, precip_list, ):
     """
     rate = get_rain_avg_lap_rate(span, history_avg, precip_list)
     return rate
+
+
+@router_5.post('/upload_tiff_file')
+async def upload_tiff_file(files: List[UploadFile] = File(...)):
+    full_path_list = []
+    for file in files:
+        file_content = await file.read()  # 读取文件
+        save_file = config['upload-save-dir']
+        filename = file.filename
+        full_path = os.path.join(save_file, filename)
+        with open(full_path, "wb") as tiff:
+            tiff.write(file_content)
+        full_path_list.append(full_path)
+    return {
+        "file_path": full_path_list,
+    }

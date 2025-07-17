@@ -1,6 +1,6 @@
-import csv
 import os
 import shutil
+
 import pandas as pd
 
 dir_name = "D:\\weather_data\\tar\\"

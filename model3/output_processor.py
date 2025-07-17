@@ -1,10 +1,10 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import os
-from datetime import datetime, timedelta
+
 # 在output_processor.py文件开头添加
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
 plt.rcParams['font.family'] = 'SimHei'  # 设置字体为黑体
 plt.rcParams['axes.unicode_minus'] = False  # 处理负号显示
 
@@ -189,6 +189,7 @@ class OutputProcessor:
         # 写入Excel新sheet
 
         # 保存到Excel
+        file_list = []
         output_file = os.path.join(output_dir, f"{year}年度水资源配置方案.xlsx")
         with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
             allocation_df.to_excel(writer, sheet_name="水源到父节点配水详情", index=False)
@@ -200,10 +201,14 @@ class OutputProcessor:
 
         # 创建配水量可视化图表
         self._plot_allocation_chart(result, output_dir, f"{year}年度水资源配置")
-        
+
+        sankey_file = None
         # 如果有节点分配结果，创建节点分配树状图
         if "node_allocation" in result:
-            self._plot_node_allocation_tree(result, output_dir, f"{year}年度节点分配")
+            sankey_file = self._plot_node_allocation_tree(result, output_dir, f"{year}年度节点分配")
+        file_list.append(output_file)
+        file_list.append(sankey_file)
+        return file_list
 
     def _output_monthly_result(self, result):
         """输出月度水资源配置结果到文件"""
@@ -323,7 +328,7 @@ class OutputProcessor:
             })
 
         source_df = pd.DataFrame(source_data)
-
+        file_list = []
         # 保存到Excel
         output_file = os.path.join(output_dir, f"{year}年{month}月水资源配置方案.xlsx")
         with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
@@ -363,10 +368,13 @@ class OutputProcessor:
 
         # 创建配水量可视化图表
         self._plot_allocation_chart(result, output_dir, f"{year}年{month}月水资源配置")
-        
+        sankey_file = None
         # 如果有节点分配结果，创建节点分配树状图
         if "node_allocation" in result:
-            self._plot_node_allocation_tree(result, output_dir, f"{year}年{month}月节点分配")
+            sankey_file = self._plot_node_allocation_tree(result, output_dir, f"{year}年{month}月节点分配")
+        file_list.append(output_file)
+        file_list.append(sankey_file)
+        return file_list
 
     def _output_dekad_result(self, result):
         """输出旬水资源配置结果到文件"""
@@ -488,6 +496,7 @@ class OutputProcessor:
 
         source_df = pd.DataFrame(source_data)
 
+        file_list = []
         # 保存到Excel
         output_file = os.path.join(output_dir, f"{year}年{month}月{dekad_name}水资源配置方案.xlsx")
         with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
@@ -528,169 +537,13 @@ class OutputProcessor:
 
         # 创建配水量可视化图表
         self._plot_allocation_chart(result, output_dir, f"{year}年{month}月{dekad_name}水资源配置")
-        
+        sankey_file = None
         # 如果有节点分配结果，创建节点分配树状图
         if "node_allocation" in result:
-            self._plot_node_allocation_tree(result, output_dir, f"{year}年{month}月{dekad_name}节点分配")
-
-    def _output_emergency_result(self, result):
-        """输出应急抗旱水资源配置结果到文件"""
-        start_date = pd.to_datetime(result["start_date"])
-        output_dir = os.path.join(self.output_folder, "应急抗旱配置")
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        # 创建结果DataFrame
-        allocation_data = []
-        for s in self.water_sources:
-            for d in self.districts:
-                allocation_data.append({
-                    "水源": s,
-                    "灌区": d,
-                    "配水量(万m³)": round(result["allocation"][s][d], 2)
-                })
-
-        allocation_df = pd.DataFrame(allocation_data)
-
-        # 提取期间供需数据
-        start = pd.to_datetime(result["start_date"])
-        end = pd.to_datetime(result["end_date"])
-        period_demand = self.daily_demand.loc[start:end].sum()
-        period_supply = self.daily_supply.loc[start:end].sum()
-
-        # 创建灌区统计信息DataFrame
-        district_data = []
-        for d in self.districts:
-            district_data.append({
-                "灌区": d,
-                "总需水量(万m³)": round(period_demand.get(d, 0), 2),
-                "实际供水量(万m³)": round(result["supply"][d], 2),
-                "缺水量(万m³)": round(result["shortage"][d], 2),
-                "需水满足率(%)": round(result["satisfaction"][d], 2),
-                "灌溉效率(%)": round(self.district_efficiency[d] * 100, 2)
-            })
-
-        district_df = pd.DataFrame(district_data)
-
-        # 创建水源统计信息DataFrame
-        source_data = []
-        for s in self.water_sources:
-            source_data.append({
-                "水源": s,
-                "总可供水量(万m³)": round(period_supply.get(s, 0), 2),
-                "实际供水量(万m³)": round(sum(result["allocation"][s].values()), 2),
-                "利用率(%)": round(result["utilization"][s], 2),
-                "优先级": self.source_priority[s],
-                "单位成本(元/m³)": self.source_cost[s]
-            })
-
-        source_df = pd.DataFrame(source_data)
-
-        # 保存到Excel
-        filename = f"应急抗旱配置方案_{start.strftime('%Y%m%d')}_{result['days']}天_干旱等级{result['drought_level']}.xlsx"
-        output_file = os.path.join(output_dir, filename)
-
-        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-            allocation_df.to_excel(writer, sheet_name="配水量详情", index=False)
-            district_df.to_excel(writer, sheet_name="灌区统计信息", index=False)
-            source_df.to_excel(writer, sheet_name="水源统计信息", index=False)
-
-            # 添加配置方案信息
-            info_df = pd.DataFrame([{
-                "开始日期": result["start_date"],
-                "结束日期": result["end_date"],
-                "天数": result["days"],
-                "干旱等级": result["drought_level"],
-                "状态": result["status"],
-                "目标函数值": round(result["objective"], 2)
-            }])
-            info_df.to_excel(writer, sheet_name="配置信息", index=False)
-
-        print(f"已保存应急抗旱水资源配置方案至 {output_file}")
-
-        # 创建配水量可视化图表
-        title = f"应急抗旱水资源配置 ({start.strftime('%Y-%m-%d')}至{end.strftime('%Y-%m-%d')}, 干旱等级:{result['drought_level']})"
-        self._plot_allocation_chart(result, output_dir, title)
-
-    def _output_multi_level_summary(self, result):
-        """输出三级水资源配置方案汇总报告"""
-        year = result["year"]
-        output_dir = os.path.join(self.output_folder, f"{year}年")
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        # 创建月度需水满足率摘要表
-        monthly_satisfaction = {}
-        for d in self.districts:
-            monthly_satisfaction[d] = []
-
-        for month in range(1, 13):
-            if month in result["monthly_results"]:
-                for d in self.districts:
-                    monthly_satisfaction[d].append(result["monthly_results"][month]["satisfaction"][d])
-            else:
-                for d in self.districts:
-                    monthly_satisfaction[d].append(None)
-
-        # 创建DataFrame
-        monthly_df = pd.DataFrame(monthly_satisfaction, index=[f"{month}月" for month in range(1, 13)])
-        monthly_df.index.name = "月份"
-
-        # 保存到Excel
-        output_file = os.path.join(output_dir, f"{year}年三级水资源配置方案汇总.xlsx")
-        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-            monthly_df.to_excel(writer, sheet_name="月度需水满足率(%)")
-
-            # 添加年度总结信息
-            summary_data = []
-            yearly_result = result["yearly_result"]
-            for d in self.districts:
-                summary_data.append({
-                    "灌区": d,
-                    "年度需水量(万m³)": round(self.yearly_demand.loc[f"{year}"].get(d, 0), 2),
-                    "年度供水量(万m³)": round(yearly_result["supply"][d], 2),
-                    "缺水量(万m³)": round(yearly_result["shortage"][d], 2),
-                    "需水满足率(%)": round(yearly_result["satisfaction"][d], 2)
-                })
-
-            summary_df = pd.DataFrame(summary_data)
-            summary_df.to_excel(writer, sheet_name="年度配置汇总", index=False)
-
-            # 添加水源利用情况
-            source_data = []
-            for s in self.water_sources:
-                monthly_usage = []
-                for month in range(1, 13):
-                    if month in result["monthly_results"]:
-                        usage = sum(result["monthly_results"][month]["allocation"][s].values())
-                        monthly_usage.append(round(usage, 2))
-                    else:
-                        monthly_usage.append(None)
-
-                source_data.append({
-                    "水源": s,
-                    "年度总供水量(万m³)": round(sum(yearly_result["allocation"][s].values()), 2),
-                    "1月": monthly_usage[0],
-                    "2月": monthly_usage[1],
-                    "3月": monthly_usage[2],
-                    "4月": monthly_usage[3],
-                    "5月": monthly_usage[4],
-                    "6月": monthly_usage[5],
-                    "7月": monthly_usage[6],
-                    "8月": monthly_usage[7],
-                    "9月": monthly_usage[8],
-                    "10月": monthly_usage[9],
-                    "11月": monthly_usage[10],
-                    "12月": monthly_usage[11]
-                })
-
-            source_df = pd.DataFrame(source_data)
-            source_df.to_excel(writer, sheet_name="水源月度利用情况", index=False)
-
-        print(f"已保存{year}年三级水资源配置方案汇总至 {output_file}")
-
-        # 生成年度配置可视化报告
-        self._plot_yearly_summary(result, output_dir)
+            sankey_file = self._plot_node_allocation_tree(result, output_dir, f"{year}年{month}月{dekad_name}节点分配")
+        file_list.append(output_file)
+        file_list.append(sankey_file)
+        return file_list
 
     def _plot_allocation_chart(self, result, output_dir, title):
         """创建配水量可视化图表"""
@@ -805,246 +658,6 @@ class OutputProcessor:
         plt.close()
 
         print(f"已保存可视化图表至 {output_file}")
-
-    def _plot_yearly_summary(self, result, output_dir):
-        """创建年度配置可视化汇总报告"""
-        year = result["year"]
-        
-        # 从树结构定义获取父节点列表
-        tree_df = pd.read_excel("model3/tree1.xlsx")
-        parent_nodes = tree_df[tree_df["是否父节点"] == 1]["ID"].tolist()
-
-        # 创建图表
-        plt.figure(figsize=(15, 12))
-
-        # 1. 月度需水量与供水量对比图
-        plt.subplot(2, 2, 1)
-        months = range(1, 13)
-        monthly_demand = []
-        monthly_supply = []
-
-        for month in months:
-            if month in result["monthly_results"]:
-                month_demand = sum(result["monthly_results"][month]["supply"].values()) + sum(
-                    result["monthly_results"][month]["shortage"].values())
-                month_supply = sum(result["monthly_results"][month]["supply"].values())
-                monthly_demand.append(month_demand)
-                monthly_supply.append(month_supply)
-            else:
-                monthly_demand.append(0)
-                monthly_supply.append(0)
-
-        plt.plot(months, monthly_demand, 'o-', label="需水量", color="blue", linewidth=2)
-        plt.plot(months, monthly_supply, 's-', label="供水量", color="green", linewidth=2)
-        plt.fill_between(months, monthly_supply, monthly_demand, color="red", alpha=0.3, label="缺水量")
-
-        plt.xlabel("月份")
-        plt.ylabel("水量(万m³)")
-        plt.title("月度需水量与供水量对比")
-        plt.xticks(months, [f"{m}月" for m in months])
-        plt.legend()
-        plt.grid(linestyle='--', alpha=0.7)
-
-        # 2. 各父节点月度需水满足率热力图
-        plt.subplot(2, 2, 2)
-        
-        # 过滤有数据的父节点
-        active_parents = []
-        for parent in parent_nodes:
-            if any(month in result["monthly_results"] and parent in result["monthly_results"][month]["satisfaction"] 
-                  for month in range(1, 13)):
-                active_parents.append(parent)
-        
-        satisfaction_data = np.zeros((len(active_parents), 12))
-
-        for i, parent in enumerate(active_parents):
-            for j, month in enumerate(range(1, 13)):
-                if (month in result["monthly_results"] and 
-                    parent in result["monthly_results"][month]["satisfaction"]):
-                    satisfaction_data[i, j] = result["monthly_results"][month]["satisfaction"][parent]
-                else:
-                    satisfaction_data[i, j] = 0
-
-        if len(active_parents) > 0:
-            im = plt.imshow(satisfaction_data, cmap='YlGn', aspect='auto', vmin=0, vmax=100)
-            plt.colorbar(im, label="需水满足率(%)")
-            plt.yticks(range(len(active_parents)), active_parents)
-            plt.xticks(range(12), [f"{m}月" for m in range(1, 13)])
-            plt.title("各节点月度需水满足率")
-        else:
-            plt.text(0.5, 0.5, "无节点满足率数据", ha='center', va='center')
-            plt.axis('off')
-            plt.title("各节点月度需水满足率")
-
-        # 3. 各水源月度利用率柱状图
-        plt.subplot(2, 2, 3)
-        source_usage = {}
-        for s in self.water_sources:
-            source_usage[s] = []
-            for month in range(1, 13):
-                if month in result["monthly_results"] and s in result["monthly_results"][month]["utilization"]:
-                    usage = result["monthly_results"][month]["utilization"][s]
-                    source_usage[s].append(usage)
-                else:
-                    source_usage[s].append(0)
-
-        bar_width = 0.8 / len(self.water_sources)
-        for i, s in enumerate(self.water_sources):
-            positions = [m + (i - len(self.water_sources) / 2 + 0.5) * bar_width for m in months]
-            plt.bar(positions, source_usage[s], width=bar_width, label=s, alpha=0.7)
-
-        plt.xlabel("月份")
-        plt.ylabel("利用率(%)")
-        plt.title("各水源月度利用率")
-        plt.xticks(months, [f"{m}月" for m in months])
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.10), ncol=len(self.water_sources) // 2)
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-
-        # 4. 各父节点月度缺水量堆叠面积图
-        plt.subplot(2, 2, 4)
-        
-        # 收集每个父节点的月度缺水量
-        node_shortage = {}
-        for parent in active_parents:
-            node_shortage[parent] = []
-            for month in range(1, 13):
-                if month in result["monthly_results"] and parent in result["monthly_results"][month]["shortage"]:
-                    shortage = result["monthly_results"][month]["shortage"][parent]
-                    node_shortage[parent].append(shortage)
-                else:
-                    node_shortage[parent].append(0)
-        
-        # 创建堆叠面积图
-        if node_shortage:
-            # 转换为数组以便堆叠
-            data = np.array([node_shortage[parent] for parent in active_parents])
-            plt.stackplot(months, data, labels=active_parents, alpha=0.7)
-            
-            plt.xlabel("月份")
-            plt.ylabel("缺水量(万m³)")
-            plt.title("各节点月度缺水量")
-            plt.xticks(months, [f"{m}月" for m in months])
-            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.10), ncol=len(active_parents) // 2 + 1)
-            plt.grid(linestyle='--', alpha=0.7)
-        else:
-            plt.text(0.5, 0.5, "无缺水量数据", ha='center', va='center')
-            plt.axis('off')
-            plt.title("各节点月度缺水量")
-
-        # 设置总标题
-        plt.suptitle(f"{year}年水资源配置汇总", fontsize=16)
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
-
-        # 保存图表
-        output_file = os.path.join(output_dir, f"{year}年水资源配置汇总.png")
-        plt.savefig(output_file, dpi=300)
-        plt.close()
-
-        print(f"已保存可视化汇总图表至 {output_file}")
-
-    def _plot_dynamic_adjustment(self, original_plan, adjusted_plan, output_dir):
-        """创建动态调整对比可视化图表"""
-        # 获取日期信息
-        start_date = pd.to_datetime(adjusted_plan["start_date"])
-        end_date = pd.to_datetime(adjusted_plan["end_date"])
-        drought_level = adjusted_plan["drought_level"]
-
-        # 创建图表
-        plt.figure(figsize=(15, 12))
-
-        # 1. 灌区供水量对比柱状图
-        plt.subplot(2, 2, 1)
-        districts = self.districts
-        x = range(len(districts))
-        original_supply = [original_plan["supply"][d] for d in districts]
-        adjusted_supply = [adjusted_plan["supply"][d] for d in districts]
-
-        plt.bar(x, original_supply, width=0.4, label="原计划供水量", color="blue", alpha=0.7)
-        plt.bar([i + 0.4 for i in x], adjusted_supply, width=0.4, label="调整后供水量", color="red", alpha=0.7)
-
-        plt.xlabel("灌区")
-        plt.ylabel("供水量(万m³)")
-        plt.title("灌区供水量调整对比")
-        plt.xticks([i + 0.2 for i in x], districts)
-        plt.legend()
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-
-        # 2. 水源利用变化饼图对比
-        plt.subplot(2, 2, 2)
-
-        # 计算原计划和调整后各水源使用比例
-        original_usage = {}
-        adjusted_usage = {}
-        for s in self.water_sources:
-            original_usage[s] = sum(original_plan["allocation"][s].values())
-            adjusted_usage[s] = sum(adjusted_plan["allocation"][s].values())
-
-        # 创建饼图
-        plt.pie(list(original_usage.values()), labels=list(original_usage.keys()),
-                autopct='%1.1f%%', startangle=90, radius=0.7, wedgeprops=dict(alpha=0.6))
-        plt.pie(list(adjusted_usage.values()), labels=[""] * len(adjusted_usage),
-                autopct='%1.1f%%', startangle=90, radius=1.0, wedgeprops=dict(alpha=0.8))
-
-        plt.axis('equal')
-        plt.title("水源利用变化对比\n(内圈:原计划, 外圈:调整后)")
-
-        # 3. 灌区需水满足率变化
-        plt.subplot(2, 2, 3)
-        original_satisfaction = [original_plan["satisfaction"][d] for d in districts]
-        adjusted_satisfaction = [adjusted_plan["satisfaction"][d] for d in districts]
-        change = [adjusted - original for adjusted, original in zip(adjusted_satisfaction, original_satisfaction)]
-
-        colors = ['green' if c >= 0 else 'red' for c in change]
-        plt.bar(x, change, color=colors, alpha=0.7)
-
-        plt.xlabel("灌区")
-        plt.ylabel("需水满足率变化(%)")
-        plt.title("灌区需水满足率调整")
-        plt.xticks(x, districts)
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-        plt.axhline(y=0, color='black', linestyle='-', alpha=0.5)
-
-        # 4. 对比摘要文本
-        plt.subplot(2, 2, 4)
-
-        # 计算总需水量和总供水量
-        original_total_supply = sum(original_plan["supply"].values())
-        adjusted_total_supply = sum(adjusted_plan["supply"].values())
-        original_total_shortage = sum(original_plan["shortage"].values())
-        adjusted_total_shortage = sum(adjusted_plan["shortage"].values())
-
-        # 创建文本摘要
-        period_text = f"{start_date.strftime('%Y-%m-%d')}至{end_date.strftime('%Y-%m-%d')}"
-        summary_text = (
-            f"动态调整对比分析\n"
-            f"期间: {period_text}\n"
-            f"干旱等级: {drought_level}\n\n"
-            f"原计划总供水量: {original_total_supply:.2f}万m³\n"
-            f"调整后总供水量: {adjusted_total_supply:.2f}万m³\n"
-            f"供水量变化: {adjusted_total_supply - original_total_supply:.2f}万m³\n\n"
-            f"原计划总缺水量: {original_total_shortage:.2f}万m³\n"
-            f"调整后总缺水量: {adjusted_total_shortage:.2f}万m³\n"
-            f"缺水量变化: {adjusted_total_shortage - original_total_shortage:.2f}万m³\n\n"
-            f"调整后最大满足率变化: {max(change):.2f}%\n"
-            f"调整后最小满足率变化: {min(change):.2f}%"
-        )
-
-        plt.text(0.5, 0.5, summary_text, horizontalalignment='center',
-                 verticalalignment='center', transform=plt.gca().transAxes,
-                 fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
-        plt.axis('off')
-
-        # 设置总标题
-        plt.suptitle(f"水资源配置动态调整分析 ({period_text}, 干旱等级:{drought_level})", fontsize=16)
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
-
-        # 保存图表
-        output_file = os.path.join(output_dir,
-                                   f"动态调整分析_{start_date.strftime('%Y%m%d')}_{adjusted_plan['days']}天_干旱等级{drought_level}.png")
-        plt.savefig(output_file, dpi=300)
-        plt.close()
-
-        print(f"已保存动态调整对比可视化报告至 {output_file}")
 
     def _plot_node_allocation_tree(self, result, output_dir, title):
         """创建节点分配树状图
@@ -1163,13 +776,15 @@ class OutputProcessor:
             print(f"已保存节点分配树状图至 {output_file}")
             
             # 额外创建一个水量分配桑基图
-            self._plot_sankey_diagram(result, output_dir, title)
+            sankey_file_name = self._plot_sankey_diagram(result, output_dir, title)
+            return sankey_file_name
             
         except ImportError:
             print("警告：无法导入networkx库，无法绘制节点分配树状图")
             print("请安装networkx库：pip install networkx matplotlib pydot pygraphviz")
         except Exception as e:
             print(f"绘制节点分配树状图时出错：{str(e)}")
+
             
     def _plot_sankey_diagram(self, result, output_dir, title):
         """创建水量分配桑基图
@@ -1274,6 +889,7 @@ class OutputProcessor:
             fig.write_html(output_file)
             
             print(f"已保存水量分配桑基图至 {output_file}")
+            return output_file
             
         except ImportError:
             print("警告：无法导入plotly库，无法绘制水量分配桑基图")

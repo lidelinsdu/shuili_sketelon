@@ -1,10 +1,10 @@
 import json
 import math
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from model1.hefeng_weather_predict import request_weather
+from utils.hefeng_weather_predict import request_weather
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
 plt.rcParams['axes.unicode_minus'] = False

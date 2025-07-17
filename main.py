@@ -28,11 +28,9 @@ def hello():
     return '欢迎来到我的fastAPI应用！'
 
 
-
-
-@router_4.get('/water_dispatch')
-def water_dispatch():
-    return "hello world"
+# @router_4.get('/water_dispatch')
+# def water_dispatch():
+#     return "hello world"
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
+import datetime as dt
 import json
 
 from fastapi import APIRouter
-import datetime as dt
 
 from model2.main import request_smi_predict, request_smi_experiential
 

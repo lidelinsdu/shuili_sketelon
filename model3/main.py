@@ -8,21 +8,24 @@
 以及"年度配置-动态调整抗旱应急"的动态调整机制
 """
 
-import os
 import argparse
-from datetime import datetime
-# from emergency_model import EmergencyWaterAllocation
-from model3.allocation_model import WaterResourceNSGAIII
 
+import yaml
+
+from model3.allocation_model import WaterResourceNSGAIII
 
 
 def parse_args():
     """解析命令行参数"""
     parser = argparse.ArgumentParser(description="水资源多目标配置模型")
-
+    with open('config/configuration.yaml', 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)['model3']
+    default_data_file = config['default-data-file']
     # 基础参数
-    parser.add_argument("--data", type=str, default="水资源原始数据.xlsx", help="水资源原始数据文件路径")
-    parser.add_argument("--output", type=str, default="结果输出", help="结果输出文件夹")
+    parser.add_argument("--data", type=str, default=default_data_file, help="水资源原始数据文件路径")
+    output_dir = config['output-dir']
+
+    parser.add_argument("--output", type=str, default=output_dir, help="结果输出文件夹")
 
     # 功能模式选择
     parser.add_argument("--mode", type=str, choices=["annual", "monthly", "dekad"],
@@ -61,22 +64,23 @@ def main():
     # 创建模型实例
     model = WaterResourceNSGAIII(args.data, args.output, storage_water_input=storage_water_input)
     result = None
+    file_dir_name = None
     # 根据运行模式执行相应功能
     if args.mode == "annual":
-        result = model.allocate_water_yearly(args.year)
+        result, file_dir_name = model.allocate_water_yearly(args.year)
         print(f"已完成{args.year}年度水资源配置")
 
     elif args.mode == "monthly":
-        result = model.allocate_water_monthly(args.year, args.month)
+        result, file_dir_name = model.allocate_water_monthly(args.year, args.month)
         print(f"已完成{args.year}年{args.month}月水资源配置")
 
     elif args.mode == "dekad":
-        result = model.allocate_water_dekad(args.year, args.month, args.dekad)
+        result, file_dir_name = model.allocate_water_dekad(args.year, args.month, args.dekad)
         dekad_name = {1: "上旬", 2: "中旬", 3: "下旬"}[args.dekad]
         print(f"已完成{args.year}年{args.month}月{dekad_name}水资源配置")
 
     print("程序执行完成！")
-    return result
+    return file_dir_name, result
 
 
 if __name__ == "__main__":

@@ -1,9 +1,11 @@
-from fastapi import APIRouter
 import time
+
+from fastapi import APIRouter
+
 from model1.inflow_ARIMA import arima_path
 from model1.inflow_SARIMA import sarima_path
 from model1.inflow_SARIMAX import sarimax_path
-from model1.hefeng_weather_predict import request_weather
+from utils.hefeng_weather_predict import request_weather
 
 router_1 = APIRouter(
     prefix="/model1",
@@ -14,7 +16,7 @@ router_1 = APIRouter(
 def inflow_predict(file_path: str, predict_days: int, modelname='arima'):
     """
     来水预报
-    :param file_path: 文件路径
+    :param file_path: 文件路径, 文件包括两列，['inflow', 'time']
     :param predict_days: 预测天数
     :param modelname: 可选预测模型【"arima", "sarima", "sarimax"】
     :return: 未来predict_days天的预测来水以及未来30天的降水预报
@@ -34,9 +36,14 @@ def inflow_predict(file_path: str, predict_days: int, modelname='arima'):
 
         end_time = time.perf_counter()  # 记录函数结束时间
         execution_time = end_time - start_time  # 计算函数执行时间（单位：秒）
-        precip_list = request_weather()
+        precip_list =  [{"date": i["fxDate"], "precip": i["precip"]} for i in request_weather()["daily"]]
         result['precipitation'] = precip_list
         result['execution_time'] = execution_time * 1000  # 添加执行时间字段（单位：毫秒）
         return result
     except Exception as e:
         return {'error': str(e)}
+
+@router_1.get('/weather_predict')
+def weather_predict():
+    precip_list =  [{"date": i["fxDate"], "precip": i["precip"]} for i in request_weather()["daily"]]
+    return {'precipitation': precip_list}

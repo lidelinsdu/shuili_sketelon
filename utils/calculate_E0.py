@@ -1,5 +1,6 @@
 import datetime as dt
 import os
+
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from pandas import DataFrame
@@ -60,7 +61,7 @@ def do_main_calculate():
             min_t = row["min_c_temp"]
             u2 = row["wind_speed_in_mps"]
             p = row["pressure"]
-            e0 = PM_ET0(max_t, min_t, p, u2, year, dt.datetime.now())
+            e0 = PM_ET0(max_t, min_t, p, u2,  dt.datetime.now())
             e0_list.loc[len(e0_list)] = [date, e0]
         e0_list.to_csv(f"{SAVE_E0_DIR}{year}_E0.csv", index=False)
 
