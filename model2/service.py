@@ -33,14 +33,23 @@ def water_predict(plant_day, begin_day, end_day, kind):
 
     former_res_list = request_smi_predict(plant_d, begin_d, ed_former, kind)
     latter_res_list = request_smi_experiential(plant_d, bg_latter, ed, kind)
-    if not type(former_res_list) is list or not type(latter_res_list) is list:
-        return {
-            "error": "<UNK>"
-        }
+
+    if ed - begin_d > dt.timedelta(days=30):
+        if not type(former_res_list) is list or not type(latter_res_list) is list:
+            # 大于三十天时，两个变量应该都有预测值，都是list，有一个不是则计算失败
+            return {"error": f"计算失败最近30天：{former_res_list}\n30天以后：{latter_res_list}"}
+    else:
+        if not type(former_res_list) is list:
+            # 小于30天第二个变量不是list
+            return {"error": f"计算失败：{former_res_list}"}
+
     former_res_list.extend(latter_res_list)
     sum_smi = 0.0
+
     for i in former_res_list:
-        sum_smi += int(i['smi'])
+        if type(i) is dict and 'smi' in i:
+            sum_smi += float(i['smi'])
+
     return json.dumps({
         "all": sum_smi,
         "smi_list": former_res_list

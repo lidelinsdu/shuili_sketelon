@@ -22,7 +22,7 @@ class WaterResourceAllocation(WaterResourceBase):
     以及"年度配置-动态调整抗旱应急"的动态调整机制
     """
 
-    def allocate_water_yearly(self, year, output=True):
+    def allocate_water_yearly(self, year, tree_file, output=True):
         """生成年度水资源配置方案
 
         参数:
@@ -134,11 +134,11 @@ class WaterResourceAllocation(WaterResourceBase):
         if output:
             from output_processor import OutputProcessor
             processor = OutputProcessor(self)
-            processor.output_yearly_result(result)
+            processor.output_yearly_result(result, tree_file)
 
         return result
 
-    def allocate_water_monthly(self, year, month, output=True):
+    def allocate_water_monthly(self, year, month, tree_file, output=True):
         """生成月度水资源配置方案
 
         参数:
@@ -255,11 +255,11 @@ class WaterResourceAllocation(WaterResourceBase):
         if output:
             from output_processor import OutputProcessor
             processor = OutputProcessor(self)
-            processor._output_monthly_result(result)
+            processor._output_monthly_result(result, tree_file)
 
         return result
 
-    def allocate_water_dekad(self, year, month, dekad, output=True):
+    def allocate_water_dekad(self, year, month, dekad, tree_file, output=True):
         """生成旬水资源配置方案
 
         参数:
@@ -397,7 +397,7 @@ class WaterResourceAllocation(WaterResourceBase):
         if output:
             from output_processor import OutputProcessor
             processor = OutputProcessor(self)
-            processor._output_dekad_result(result)
+            processor._output_dekad_result(result, tree_file)
 
         return result
 
@@ -686,7 +686,7 @@ class WaterResourceNSGAIII(WaterResourceBase):
         self.node_flow_records = node_flow_records
         return all_node_allocation
 
-    def allocate_water_yearly(self, year, output=True):
+    def allocate_water_yearly(self, year, tree_file, output=True):
         """生成年度水资源配置方案
 
         参数:
@@ -788,11 +788,11 @@ class WaterResourceNSGAIII(WaterResourceBase):
         if output:
             from model3.output_processor import OutputProcessor
             processor = OutputProcessor(self)
-            file_dir_name = processor.output_yearly_result(result)  # 调用年度结果输出方法
+            file_dir_name = processor.output_yearly_result(result, tree_file)  # 调用年度结果输出方法
 
         return result, file_dir_name
 
-    def allocate_water_monthly(self, year, month, output=True):
+    def allocate_water_monthly(self, year, month, tree_file, output=True):
         """生成月度水资源配置方案（NSGA-III优化）"""
         print(f"正在使用NSGA-III算法生成{year}年{month}月水资源配置方案...")
 
@@ -876,11 +876,11 @@ class WaterResourceNSGAIII(WaterResourceBase):
         if output:
             from model3.output_processor import OutputProcessor
             processor = OutputProcessor(self)
-            file_dir_name = processor._output_monthly_result(result)
+            file_dir_name = processor._output_monthly_result(result, tree_file)
 
         return result, file_dir_name
 
-    def allocate_water_dekad(self, year, month, dekad, output=True):
+    def allocate_water_dekad(self, year, month, dekad, tree_file, output=True):
         """生成旬水资源配置方案（NSGA-III优化）"""
         dekad_name = {1: "上旬", 2: "中旬", 3: "下旬"}[dekad]
         print(f"正在生成{year}年{month}月{dekad_name}水资源配置方案...")
@@ -976,6 +976,6 @@ class WaterResourceNSGAIII(WaterResourceBase):
         if output:
             from model3.output_processor import OutputProcessor
             processor = OutputProcessor(self)
-            file_dir_name = processor._output_dekad_result(result)
+            file_dir_name = processor._output_dekad_result(result, tree_file)
 
         return result, file_dir_name

@@ -5,7 +5,6 @@ numpy~=1.26.0
 statsmodels~=0.14.4
 requests~=2.32.4
 matplotlib~=3.9.4
-GDAL~=3.7.1
 scikit-learn~=1.6.1
 scipy~=1.13.1
 seaborn~=0.13.2
@@ -15,7 +14,7 @@ pydantic~=2.11.7
 python-dateutil~=2.9.0.post0
 pulp~=3.2.1
 plotly~=6.2.0
-pymoo~=0.6.0
 networkx~=3.2.1
 PyYAML~=6.0.2
 python-multipart
+pymoo==0.6.0

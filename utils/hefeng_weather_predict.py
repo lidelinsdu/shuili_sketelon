@@ -2,10 +2,8 @@ import requests
 import yaml
 
 
-
-
 def request_weather():
-    with open("config/configuration.yaml", 'r') as ymlfile:
+    with open("config/configuration.yaml", 'r', encoding='utf-8') as ymlfile:
         cfg = yaml.safe_load(ymlfile)
     hefeng = cfg['hefeng']
     api_key = hefeng['api-key']

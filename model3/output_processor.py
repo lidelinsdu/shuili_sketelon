@@ -26,7 +26,7 @@ class OutputProcessor:
         self.yearly_supply = model.yearly_supply
         self.yearly_demand = model.yearly_demand
 
-    def output_yearly_result(self, result):
+    def output_yearly_result(self, result, tree_file):
         """输出年度水资源配置结果到文件"""
         year = result["year"]
         output_dir = os.path.join(self.output_folder, f"{year}年")
@@ -34,7 +34,7 @@ class OutputProcessor:
             os.makedirs(output_dir)
             
         # 从树结构定义获取父节点列表
-        tree_df = pd.read_excel("model3/tree1.xlsx")
+        tree_df = pd.read_excel(tree_file)
         parent_nodes = tree_df[tree_df["是否父节点"] == 1]["ID"].tolist()
         
         # 构建节点与其父节点的映射
@@ -200,17 +200,17 @@ class OutputProcessor:
         print(f"已保存{year}年度水资源配置方案至 {output_file}")
 
         # 创建配水量可视化图表
-        self._plot_allocation_chart(result, output_dir, f"{year}年度水资源配置")
+        self._plot_allocation_chart(result, output_dir, f"{year}年度水资源配置", tree_file)
 
         sankey_file = None
         # 如果有节点分配结果，创建节点分配树状图
         if "node_allocation" in result:
-            sankey_file = self._plot_node_allocation_tree(result, output_dir, f"{year}年度节点分配")
+            sankey_file = self._plot_node_allocation_tree(result, output_dir, f"{year}年度节点分配", tree_file)
         file_list.append(output_file)
         file_list.append(sankey_file)
         return file_list
 
-    def _output_monthly_result(self, result):
+    def _output_monthly_result(self, result, tree_file):
         """输出月度水资源配置结果到文件"""
         year = result["year"]
         month = result["month"]
@@ -219,7 +219,7 @@ class OutputProcessor:
             os.makedirs(output_dir)
             
         # 从树结构定义获取父节点列表
-        tree_df = pd.read_excel("model3/tree1.xlsx")
+        tree_df = pd.read_excel(tree_file)
         parent_nodes = tree_df[tree_df["是否父节点"] == 1]["ID"].tolist()
         
         # 构建节点与其父节点的映射
@@ -367,16 +367,16 @@ class OutputProcessor:
         print(f"已保存{year}年{month}月水资源配置方案至 {output_file}")
 
         # 创建配水量可视化图表
-        self._plot_allocation_chart(result, output_dir, f"{year}年{month}月水资源配置")
+        self._plot_allocation_chart(result, output_dir, f"{year}年{month}月水资源配置", tree_file)
         sankey_file = None
         # 如果有节点分配结果，创建节点分配树状图
         if "node_allocation" in result:
-            sankey_file = self._plot_node_allocation_tree(result, output_dir, f"{year}年{month}月节点分配")
+            sankey_file = self._plot_node_allocation_tree(result, output_dir, f"{year}年{month}月节点分配", tree_file)
         file_list.append(output_file)
         file_list.append(sankey_file)
         return file_list
 
-    def _output_dekad_result(self, result):
+    def _output_dekad_result(self, result, tree_file):
         """输出旬水资源配置结果到文件"""
         year = result["year"]
         month = result["month"]
@@ -386,7 +386,7 @@ class OutputProcessor:
             os.makedirs(output_dir)
             
         # 从树结构定义获取父节点列表
-        tree_df = pd.read_excel("model3/tree1.xlsx")
+        tree_df = pd.read_excel(tree_file)
         parent_nodes = tree_df[tree_df["是否父节点"] == 1]["ID"].tolist()
         
         # 构建节点与其父节点的映射
@@ -536,21 +536,21 @@ class OutputProcessor:
         print(f"已保存{year}年{month}月{dekad_name}水资源配置方案至 {output_file}")
 
         # 创建配水量可视化图表
-        self._plot_allocation_chart(result, output_dir, f"{year}年{month}月{dekad_name}水资源配置")
+        self._plot_allocation_chart(result, output_dir, f"{year}年{month}月{dekad_name}水资源配置", tree_file)
         sankey_file = None
         # 如果有节点分配结果，创建节点分配树状图
         if "node_allocation" in result:
-            sankey_file = self._plot_node_allocation_tree(result, output_dir, f"{year}年{month}月{dekad_name}节点分配")
+            sankey_file = self._plot_node_allocation_tree(result, output_dir, f"{year}年{month}月{dekad_name}节点分配", tree_file)
         file_list.append(output_file)
         file_list.append(sankey_file)
         return file_list
 
-    def _plot_allocation_chart(self, result, output_dir, title):
+    def _plot_allocation_chart(self, result, output_dir, title, tree_file):
         """创建配水量可视化图表"""
         plt.figure(figsize=(14, 10))
         
         # 从树结构定义获取父节点列表
-        tree_df = pd.read_excel("model3/tree1.xlsx")
+        tree_df = pd.read_excel(tree_file)
         parent_nodes = tree_df[tree_df["是否父节点"] == 1]["ID"].tolist()
 
         # 1. 创建父节点需水量与实际供水量对比图
@@ -659,7 +659,7 @@ class OutputProcessor:
 
         print(f"已保存可视化图表至 {output_file}")
 
-    def _plot_node_allocation_tree(self, result, output_dir, title):
+    def _plot_node_allocation_tree(self, result, output_dir, title, tree_file):
         """创建节点分配树状图
         
         使用networkx和matplotlib库创建树状图，显示水资源从父节点到子节点的分配情况
@@ -668,7 +668,7 @@ class OutputProcessor:
             import networkx as nx
             
             # 从树结构定义获取节点关系
-            tree_df = pd.read_excel("model3/tree1.xlsx")
+            tree_df = pd.read_excel(tree_file)
             
             # 构建父节点到子节点的映射
             parent_to_children = {}
@@ -776,7 +776,7 @@ class OutputProcessor:
             print(f"已保存节点分配树状图至 {output_file}")
             
             # 额外创建一个水量分配桑基图
-            sankey_file_name = self._plot_sankey_diagram(result, output_dir, title)
+            sankey_file_name = self._plot_sankey_diagram(result, output_dir, title, tree_file)
             return sankey_file_name
             
         except ImportError:
@@ -786,7 +786,7 @@ class OutputProcessor:
             print(f"绘制节点分配树状图时出错：{str(e)}")
 
             
-    def _plot_sankey_diagram(self, result, output_dir, title):
+    def _plot_sankey_diagram(self, result, output_dir, title, tree_file):
         """创建水量分配桑基图
         
         使用plotly库创建桑基图，显示水资源从水源到父节点再到子节点的流动
@@ -795,7 +795,7 @@ class OutputProcessor:
             import plotly.graph_objects as go
             
             # 从树结构定义获取节点关系
-            tree_df = pd.read_excel("model3/tree1.xlsx")
+            tree_df = pd.read_excel(tree_file)
             
             # 构建节点与其父节点的映射
             child_to_parent = dict(zip(tree_df['ID'], tree_df['上一节点ID']))

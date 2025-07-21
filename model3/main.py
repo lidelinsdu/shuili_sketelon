@@ -52,7 +52,7 @@ def parse_args():
     return args
 
 
-def main():
+def main(tree_file):
     # 解析命令行参数
     args = parse_args()
 
@@ -67,15 +67,15 @@ def main():
     file_dir_name = None
     # 根据运行模式执行相应功能
     if args.mode == "annual":
-        result, file_dir_name = model.allocate_water_yearly(args.year)
+        result, file_dir_name = model.allocate_water_yearly(args.year, tree_file)
         print(f"已完成{args.year}年度水资源配置")
 
     elif args.mode == "monthly":
-        result, file_dir_name = model.allocate_water_monthly(args.year, args.month)
+        result, file_dir_name = model.allocate_water_monthly(args.year, args.month, tree_file)
         print(f"已完成{args.year}年{args.month}月水资源配置")
 
     elif args.mode == "dekad":
-        result, file_dir_name = model.allocate_water_dekad(args.year, args.month, args.dekad)
+        result, file_dir_name = model.allocate_water_dekad(args.year, args.month, args.dekad, tree_file)
         dekad_name = {1: "上旬", 2: "中旬", 3: "下旬"}[args.dekad]
         print(f"已完成{args.year}年{args.month}月{dekad_name}水资源配置")
 

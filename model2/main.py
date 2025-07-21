@@ -330,9 +330,9 @@ def request_smi_predict(plant_d, begin_d, end_d, kind="wheat"):
 
 def request_smi_experiential(plant_d, begin_d, end_d, kind="wheat"):
     if begin_d >= end_d:
-        return 0
+        return "日期错误"
     if kind not in ["corn", "vegetable", "wheat", "peanut", "cotton"]:
-        return "未知类型"
+        return "未知作物类型"
 
     with open('model2/data.json', 'r', encoding='utf-8') as f:
         data = json.load(f)

@@ -2,9 +2,10 @@ import os
 import sys
 from typing import Optional
 
-from fastapi import APIRouter
+import yaml
+from fastapi import APIRouter, UploadFile, File
 from starlette.responses import FileResponse
-
+import datetime as dt
 import model3.main
 
 router_3 = APIRouter(
@@ -37,9 +38,11 @@ data1.xlsx需包含信息：
 
 
 @router_3.get("/get_allocate_xlsx")
-def get_allocate_xlsx(time_range: str, year: int, data: Optional[str] = None, month: Optional[int] = None, dekad: Optional[int] = None, ):
+def get_allocate_xlsx(time_range: str, year: int, tree_file: Optional[str] = "model3/tree1.xlsx",  data: Optional[str] = None, month: Optional[int] = None,
+                      dekad: Optional[int] = None, ):
     """
     获取水资源配置方案，结果以xlsx文件保存
+    :param tree_file: 树文件结构
     :param time_range: 时间范围，枚举类型：[annual, monthly, dekad]
     :param year: 整数类型
     :param month: 整数类型 1-12
@@ -63,16 +66,36 @@ def get_allocate_xlsx(time_range: str, year: int, data: Optional[str] = None, mo
     if data is not None:
         sys.argv.append("--data")
         sys.argv.append(data)
-    return model3.main.main()
+    return model3.main.main(tree_file)
 
 
 # model3_output/2024年\\1月\\2024年1月水资源配置方案.xlsx
 @router_3.get("/download_allocate_xlsx")
 def download_allocate_xlsx(file_name_or_path: Optional[str]):
+    """下载文件，主要用来下载生成的配置方案.xlsx, 也可以用来作文件参考，如tree1.xlsx, data1.xlsx"""
     if os.path.exists(file_name_or_path):
         return FileResponse(file_name_or_path, filename=file_name_or_path)
     else:
         return {"msg": "文件不存在"}
 
 
-
+@router_3.post('/upload_data_file')
+async def upload_data_file(file: UploadFile = File(...)):
+    """
+    上传用于水资源配置的data.xlsx 文件
+    :param file:
+    :return: 文件路径
+    """
+    with open('config/configuration.yaml', 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)['model3']
+    data_dir = config['data-dir']
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    file_content = await file.read()
+    filename = file.filename
+    if not filename:
+        filename = dt.datetime.now().strftime("%Y%m%d%H%M%S")+'.xlsx'
+    full_path = os.path.join(data_dir, filename)
+    with open(full_path, 'wb') as f:
+        f.write(file_content)
+    return {"file_dir": full_path}
