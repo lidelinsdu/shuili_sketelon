@@ -1,0 +1,83 @@
+{
+  "张安水库提水灌片": {
+    "id": "n1",
+    "area": 10386,
+    "need-allocate": true,
+    "main-crops": [
+      ""
+    ]
+  },
+  "北仇水库提水灌片": {
+    "id": "n2",
+    "area": 8369,
+    "need-allocate": true,
+    "main-crops": [
+      ""
+    ]
+  },
+  "红石金渠道提水灌片": {
+    "id": "n3",
+    "area": 6699,
+    "need-allocate": true,
+    "main-crops": [
+      ""
+    ]
+  },
+  "营盘水库提水灌片": {
+    "id": "n4",
+    "area": 2508,
+    "need-allocate": true,
+    "main-crops": [
+      ""
+    ]
+  },
+  "魏庄泵站提水灌片": {
+    "id": "n5",
+    "area": 9474,
+    "need-allocate": true,
+    "main-crops": [
+      ""
+    ]
+  },
+  "浊河提水灌片": {
+    "id": "n6",
+    "area": 36683,
+    "need-allocate": true,
+    "main-crops": [
+      ""
+    ]
+  },
+  "边院镇漕浊河提水灌片": {
+    "id": "n7",
+    "area": 11049,
+    "need-allocate": true,
+    "main-crops": [
+      ""
+    ]
+  },
+  "机井灌片": {
+    "id": "n8",
+    "area": 7144,
+    "need-allocate": false,
+    "main-crops": [
+      ""
+    ]
+  },
+  "张安水库自流灌片": {
+    "id": "n9",
+    "area": 2318,
+    "need-allocate": true,
+    "main-crops": [
+      ""
+    ]
+  },
+  "安驾庄镇漕浊河提水灌片": {
+    "id": "n10",
+    "area": 5605,
+    "need-allocate": true,
+    "main-crops": [
+      ""
+    ]
+  }
+}
+

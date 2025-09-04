@@ -6,7 +6,9 @@ from datetime import timedelta
 
 import pandas
 import pandas as pd
+import yaml
 
+import utils.file_path_processor
 from utils.hefeng_weather_predict import request_weather
 
 # 纬度
@@ -280,7 +282,9 @@ def predict_e(kind, plant_d, begin_d, end_d, datalist):
         return "数据长度小于预测天数，请检查上传的数据"
     E = 0
     E_list = []
-    with open('model2/data.json', 'r', encoding='utf-8') as f:
+    with open("config/configuration_local.yaml", 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)['model2']
+    with open(config['data-dir'], 'r', encoding='utf-8') as f:
         data = json.load(f)
     Kc_list = data["Kc"][kind]
     # Kc分界点
@@ -334,7 +338,9 @@ def request_smi_experiential(plant_d, begin_d, end_d, kind="wheat"):
     if kind not in ["corn", "vegetable", "wheat", "peanut", "cotton"]:
         return "未知作物类型"
 
-    with open('model2/data.json', 'r', encoding='utf-8') as f:
+    with open("config/configuration_local.yaml", 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)['model2']
+    with open(config['data-dir'], 'r', encoding='utf-8') as f:
         data = json.load(f)
     Kc_list = data["Kc"][kind]
     days = grow_days(plant_d, end_d)
@@ -345,7 +351,7 @@ def request_smi_experiential(plant_d, begin_d, end_d, kind="wheat"):
     kc_values = list(Kc_list.values())
     categories = pandas.cut(day_list, date_split).codes
     kc_for_days = [kc_values[i + 1] for i in categories]
-    with open('model2/ave_e0.csv', 'r', encoding='utf-8') as f:
+    with open(config['ave_e0_csv'], 'r', encoding='utf-8') as f:
         df = pd.read_csv(f)
 
     plant_day = plant_d

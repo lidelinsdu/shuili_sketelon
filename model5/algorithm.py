@@ -1,9 +1,17 @@
+import datetime as dt
 import json
 import math
+import os.path
+import zipfile
+import utils.file_path_processor
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import yaml
 
+from model5.togeoJSON import generate_geoJSON
 from utils.hefeng_weather_predict import request_weather
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
@@ -17,6 +25,8 @@ import seaborn as sns
 
 MINUS_RATE = 1.08
 HEATMAP_DIR = "model5/heatmap/"
+with open("config/configuration_local.yaml", 'r', encoding='utf-8') as f:
+    config = yaml.safe_load(f)['model5']
 
 
 def create_example(is_write=False):
@@ -192,8 +202,27 @@ def nir_red_to_smi(red_band_file, nir_band_file):
     """
     height, width = Image.open(nir_band_file).size
     # 加载 Red 和 NIR 波段
-    red = gdal.Open(red_band_file).ReadAsArray().astype(float) * 10e-6
-    nir = gdal.Open(nir_band_file).ReadAsArray().astype(float) * 10e-6
+    red_file = gdal.Open(red_band_file)
+    red_band = red_file.GetRasterBand(1)
+    red = red_band.ReadAsArray().astype(float) * 10e-4
+    nir_file = gdal.Open(nir_band_file)
+    nir_band = nir_file.GetRasterBand(1)
+    nir = nir_band.ReadAsArray().astype(float) * 10e-4
+    example = gdal.Open(red_band_file, gdal.GA_ReadOnly)
+    width = example.RasterXSize
+    height = example.RasterYSize
+    bands = example.RasterCount
+
+    geotransform = example.GetGeoTransform()
+    projection = example.GetProjection()
+
+    data_info = {
+        'height': height,
+        'width': width,
+        'bands': bands,
+        'geotransform': geotransform,
+        'projection': projection,
+    }
 
     # 掩膜处理：去除无效值（如云、水体）
     mask = (red > 0) & (nir > 0)
@@ -209,34 +238,13 @@ def nir_red_to_smi(red_band_file, nir_band_file):
     # plt.plot(x, x * k + b, 'r-', label='soil Edge')
     print(f'土壤线：NIR={k:.2f}RED+{b:.4f}')
 
-    # L = (-1 / k) * x
-    # plt.plot(x, L, 'b-', label='L Edge')
-    # 拟合干边（最大值包络线）
-    # red_unique = np.unique(red_masked)
-    # nir_dry = [np.percentile(nir_masked[abs(red_masked - r) < 0.01], 95) for r in red_unique]
-    # dry_coeff = np.polyfit(red_unique, nir_dry, deg=1)
-    # dry_line = np.poly1d(dry_coeff)
-    # # plt.plot(red_unique, dry_line(red_unique), 'r-', label='Dry Edge')
-    #
-    # # 拟合湿边（最小值包络线）
-    # nir_wet = [np.percentile(nir_masked[abs(red_masked - r) < 0.01], 5) for r in red_unique]
-    # wet_coeff = np.polyfit(red_unique, nir_wet, deg=1)
-    # wet_line = np.poly1d(wet_coeff)
-    # plt.plot(red_unique, wet_line(red_unique), 'b-', label='Wet Edge')
-
-    # plt.xlabel('Red Reflectance')
-    # plt.ylabel('NIR Reflectance')
-    # plt.legend()
-    # plt.title('NIR-Red Feature Space with Dry/Wet Edges')
-    # plt.show()
-
     smi = np.zeros_like(red)
     # for i in range(width):
     #     for j in range(height):
     #         smi[i, j] = smmrs(red_masked[i * width + j], nir_masked[i * width + j], k)
     smi = smmrs(red, nir, k)
     # plt.scatter(red_masked, smi, c='red', alpha=0.5)
-    return smi
+    return smi, data_info
 
 
 def smmrs(red, nir, m, ):
@@ -248,7 +256,36 @@ def smmrs(red, nir, m, ):
     :return: smmrs值
     """
     a = 1 / math.sqrt(m ** 2 + 1)
-    return 1 - a * (red + m * nir)
+    res = np.round(1 - a * (red + m * nir), 2)
+    return np.clip(res, 0, 1)
+
+
+def normalized(data):
+    data = np.array(data, dtype=float)
+    valid_data = data[~np.isnan(data)]
+
+    # 检查是否有足够数据
+    if len(valid_data) == 0:
+        raise ValueError("数组中没有有效数据（全为 NaN）")
+    elif len(valid_data) == 1:
+        # 只有一个有效值，归一化为 0.0
+        normalized = np.full(data.shape, np.nan)
+        normalized[~np.isnan(data)] = 0.0
+    else:
+        # 步骤 2: 计算全局 min 和 max（忽略 NaN）
+        global_min = valid_data.min()
+        global_max = valid_data.max()
+
+        # 防止除以零（所有值相等）
+        if global_max == global_min:
+            normalized = np.full(data.shape, np.nan)
+            normalized[~np.isnan(data)] = 0.0
+        else:
+            # 步骤 3: 归一化所有非 NaN 元素
+            normalized = np.full(data.shape, np.nan)
+            normalized[~np.isnan(data)] = (data[~np.isnan(data)] - global_min) / (global_max - global_min)
+
+    return normalized
 
 
 def plot_heatmap(smi_2d, filename="test"):
@@ -265,29 +302,42 @@ def plot_heatmap(smi_2d, filename="test"):
 
     plt.title(f"{filename}含水量分布图")
     plt.tight_layout()
-    filename = f"{HEATMAP_DIR}{filename}.png"
-    # with open(filename, "wb") as f:
+    filename = f"../{HEATMAP_DIR}{filename}.png"
     plt.savefig(filename)
     # plt.show()
     return filename
 
 
 def get_dynamic_smi(file_list):
-    smi_list = []
+    """
+
+    :param file_list:
+    :return: 存放geojson文件夹路径
+    """
+    geojson_save_dir = config['geojson-save-dir']
+
+    folder_name = dt.datetime.now().strftime("%Y%m%d%H%M%S")  # 存放到这个文件夹
+    os.makedirs(os.path.join(geojson_save_dir, folder_name), exist_ok=True)
     for i in file_list:
         red_file = i["red_dir"]
         nir_file = i["nir_dir"]
-        smi = nir_red_to_smi(red_file, nir_file)
-        smi_list.append(smi)
-    return smi_list
+        smi, data_info = nir_red_to_smi(red_file, nir_file)
+
+        tiff_path = get_file_name(red_file)
+        write_tiff_file(smi, data_info, tiff_path)  # 写入
+
+        output_geojson_path = geojson_save_dir + folder_name + '/' + tiff_path.split('/')[-1].replace('.tif',
+                                                                                                      '.geojson')
+        success = generate_geoJSON(tiff_path, output_geojson_path)
+    return geojson_save_dir + folder_name
 
 
 def get_continuous_dry_day() -> dict:
-    day_list = request_weather()
+    day_list = request_weather()['daily']
     no_rain_day = []
     for i in day_list:
         if i["precip"] == "0" or i["precip"] == "0.0" or float(i["precip"]) == 0.0:
-            no_rain_day.append(i["date"])
+            no_rain_day.append(i["fxDate"])
             continue
         else:
             break
@@ -297,19 +347,126 @@ def get_continuous_dry_day() -> dict:
     }
 
 
-def get_rain_avg_lap_rate(span: str, history_avg, precip_list, ):
-    precip_sum = 0
-    for precip in precip_list:
-        precip_sum += precip["precip"]
+def get_rain_avg_lap_rate(span: str, present_inflow: float, date: dt.datetime, history_file_name: str = None):
+    present_inflow = float(present_inflow)
+    year = date.year
+    month = date.month
+    with open("config/configuration_local.yaml", 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)['model5']
+    data_dir = config['history-data-dir']
+    if history_file_name is None:
+        history_file_name = data_dir
+    with open(history_file_name, 'r', encoding='utf-8') as f:
+        df = pd.read_csv(f)
+    if span == "year":
+        rows = df[df["DATE"].map(
+            lambda x: dt.datetime.strptime(x, "%Y/%m/%d") < dt.datetime(year - 1, date.month, date.day)
+        )]
+        all_precip_list = list(rows["PRCP"])
+        valid_precip_list = [i * 25.4 if abs(i - 99.99) > 0.1 else 0 for i in all_precip_list]
+        all_precip = round(sum(valid_precip_list), 1)
 
-    day_count = len(precip_list)
-    history_sum = day_count * history_avg
-    rate = (precip_sum - history_sum) / history_sum
-    return f"{rate:.4f}"
+    elif span == "month":
+        rows = df[df["DATE"].map(
+            lambda x: dt.datetime.strptime(x, "%Y/%m/%d") < dt.datetime(year - 1, month, date.day)
+                      and dt.datetime.strptime(x, "%Y/%m/%d").month == date.month
+        )]
+        all_precip_list = list(rows["PRCP"])
+        valid_precip_list = [i * 25.4 if abs(i - 99.99) > 0.1 else 0 for i in all_precip_list]
+        all_precip = round(sum(valid_precip_list), 1)
+    else:
+        # 先计算处于哪一旬
+        day = date.day
+        flag = 1
+        if 1 <= day < 11:
+            flag = 0
+        elif 11 <= day < 21:
+            flag = 1
+        else:
+            flag = 2
+        if flag != 2:
+            rows = df[df["DATE"].map(
+                lambda x: dt.datetime(year - 1, month, 10 * flag + 1) <=
+                          dt.datetime.strptime(x, "%Y/%m/%d") <
+                          dt.datetime(year - 1, month, (flag + 1) * 10 + 1))]
+        else:
+            rows = df[df["DATE"].map(
+                lambda x: dt.datetime.strptime(x, "%Y/%m/%d") >= dt.datetime(year - 1, month, 21)
+            )]
+        all_precip_list = list(rows["PRCP"])
+        valid_precip_list = [i * 25.4 if abs(i - 999.9) > 0.1 else 0 for i in all_precip_list]
+        all_precip = round(sum(valid_precip_list), 1)
+
+    rate = round((present_inflow - all_precip) / all_precip, 3)
+    if rate < 0:
+        res = f"相比去年同比下降{round(abs(rate) * 100, 1)} %"
+    else:
+        res = f"相比去年同比上升{round(abs(rate) * 100, 1)} %"
+
+    return res
+
+
+def write_tiff_file(smi_list, data_info, filename):
+    width = data_info['width']
+    height = data_info['height']
+    geotransform = data_info['geotransform']
+    projection = data_info['projection']
+
+    driver = gdal.GetDriverByName('GTiff')
+    dataset = driver.Create(filename, width, height, 1, gdal.GDT_Float32)
+
+    band = dataset.GetRasterBand(1)
+    dataset.SetGeoTransform(geotransform)
+    dataset.SetProjection(projection)
+    band.WriteArray(smi_list)
+    dataset.FlushCache()
+    dataset = None
+    return filename
+
+
+def read_my_tiff(file_dir):
+    file = gdal.Open(file_dir, gdal.GA_ReadOnly)
+    band = file.GetRasterBand(1)
+    array = band.ReadAsArray()
+    print(array.shape)
+
+
+def get_file_name(file_dir):
+    filename = file_dir.split("/")[-1]
+    filename_part = filename.split("_")
+    filename = filename_part[0] + 'smi.tif'
+    with open("config/configuration_local.yaml", 'r', encoding='utf-8') as file:
+        config = yaml.safe_load(file)['model5']
+    if not os.path.exists(config['smi-save-dir']):
+        os.makedirs(config['smi-save-dir'])
+    full_path = config['smi-save-dir'] + filename
+    return full_path
+
+
+def zipDir(dirpath, outFullName):
+    """
+    压缩指定文件夹
+    :param dirpath: 目标文件夹路径
+    :param outFullName: 压缩文件保存路径+xxxx.zip
+    :return: 无
+    """
+    zip = zipfile.ZipFile(outFullName, "w", zipfile.ZIP_DEFLATED)
+    for path, dirnames, filenames in os.walk(dirpath):
+        # 去掉目标根路径，只对目标文件夹下的文件及文件夹进行压缩
+        fpath = path.replace(dirpath, '')
+        for filename in filenames:
+            zip.write(os.path.join(path, filename), os.path.join(fpath, filename))
+    zip.close()
+
+
+def set_min_area(file_path):
+    data = gpd.read_file(file_path)
+    data = data.to_crs(epsg=4326)
+    data['area'] = data.geometry.area
+    min_area = 100
+    filtered_data = data[data['area'] >= min_area]
+    filtered_data.to_file('filtered_data.geojson', driver='GeoJSON')
 
 
 if __name__ == '__main__':
-    red_file_dir = "tifs/DJI_20230215104141_0058_MS_R.TIF"
-    nir_file_dir = "tifs/DJI_20230215104143_0059_MS_NIR.TIF"
-    smi = nir_red_to_smi(red_file_dir, nir_file_dir)
-    plot_heatmap(smi, )
+    set_min_area('./geojson/resultsmi.geojson')

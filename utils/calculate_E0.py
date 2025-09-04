@@ -41,13 +41,15 @@ def weather_from_csv_to_json(path, year):
     wind_speed_in_knots = df["WDSP"].tolist()  # 平均风速
     wind_speed_in_mps = [knots_to_mps(i) for i in wind_speed_in_knots]
     pressure = df["SLP"].tolist()  # 平均气压
+    precip = df["PRCP"].tolist()
     # 日照时间从data.json文件中读取
 
     new_df = DataFrame({"date": date,
                         "max_c_temp": max_c_temp,
                         "min_c_temp": min_c_temp,
                         "wind_speed_in_mps": wind_speed_in_mps,
-                        "pressure": pressure, })
+                        "pressure": pressure,
+                        "precip": precip})
     return year, new_df
 
 
@@ -61,7 +63,7 @@ def do_main_calculate():
             min_t = row["min_c_temp"]
             u2 = row["wind_speed_in_mps"]
             p = row["pressure"]
-            e0 = PM_ET0(max_t, min_t, p, u2,  dt.datetime.now())
+            e0 = PM_ET0(max_t, min_t, p, u2, dt.datetime.now())
             e0_list.loc[len(e0_list)] = [date, e0]
         e0_list.to_csv(f"{SAVE_E0_DIR}{year}_E0.csv", index=False)
 
@@ -87,7 +89,7 @@ def ave_e0():
         count = 0.0
         for year, filename in fn_list:
             # print(f"处理文件{filename}")
-            i = (year-2024)+19
+            i = (year - 2024) + 19
             data = pd.read_csv(filename)
             for index, row in data.iterrows():
                 f_date = dt.datetime.strptime(row["date"], "%Y-%m-%d")

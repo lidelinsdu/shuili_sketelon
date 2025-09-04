@@ -1,5 +1,4 @@
 import datetime as dt
-import json
 
 from fastapi import APIRouter
 
@@ -15,11 +14,11 @@ router_2 = APIRouter(
 def water_predict(plant_day, begin_day, end_day, kind):
     """
     需水预测
-    :param plant_day: 种植日期
-    :param begin_day: 开始日期
-    :param end_day: 结束日期
-    :param kind: 作物类型，枚举["wheat", "corn", "cotton", "vegetable", "peanut"]
-    :return: 给出单株植物每日需水序列以及总需水量
+    \n:param plant_day: 种植日期 格式为： %Y-%m-%d  下同
+    \n:param begin_day: 开始日期
+    \n:param end_day: 结束日期
+    \n:param kind: 作物类型，枚举["wheat", "corn", "cotton", "vegetable", "peanut"]，依次是：【小麦， 玉米， 棉花， 蔬菜（以菠菜为代表）， 花生】
+    \n:return: 给出单株植物每日需水序列以及总需水量， all（总需水量）: xx.xx mm（毫米）， smi-list(每日需水量)中的单元：{'date': xx.xx}单位：毫米
     """
     plant_d = dt.datetime.strptime(plant_day, "%Y-%m-%d")
     begin_d = dt.datetime.strptime(begin_day, "%Y-%m-%d")
@@ -29,7 +28,7 @@ def water_predict(plant_day, begin_day, end_day, kind):
     bg_latter = ed
     if ed - td > dt.timedelta(days=30):  # 如果超过30天
         ed_former = td + dt.timedelta(days=30)
-        bg_latter = ed_former + dt.timedelta(days=1)
+        bg_latter = ed_former
 
     former_res_list = request_smi_predict(plant_d, begin_d, ed_former, kind)
     latter_res_list = request_smi_experiential(plant_d, bg_latter, ed, kind)
@@ -50,7 +49,8 @@ def water_predict(plant_day, begin_day, end_day, kind):
         if type(i) is dict and 'smi' in i:
             sum_smi += float(i['smi'])
 
-    return json.dumps({
-        "all": sum_smi,
+    return {
+        "all": round(sum_smi, 1),
         "smi_list": former_res_list
-    })
+    }
+

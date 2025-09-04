@@ -1,0 +1,26 @@
+hefeng:
+  api-key: '1647396dc7214c62992c61940f9e64dd'
+  location: 101120804 # 肥城
+  latitude: 35.96 # 纬度
+  longitude: 116.88 #经度
+
+model1:
+  data-dir: 'model1/data/daily_rate.json' # 数据路径
+  default-method: 'sarima' # 默认预测方法
+
+model2:
+  data-dir: 'model2/data/crop_data.json' # Kc 生长周期等数据存放文件
+  ave_e0_csv: 'model2/data/ave_e0.csv' # 经验e0存放文件
+
+model3:
+  data-dir: '' # 算法输入数据存放路径
+  area-info-file: 'model3/data/area_info.json' # 灌区信息存放路径
+  history-precip-data-dir: 'model3/data/ave_precip.json' # 历史每日降雨存放路径
+
+
+model5:
+  upload-save-dir: 'model5/smi_tifs/' # 上传红波段和近红外波段tiff文件默认存放路径
+  smi-save-dir: '' # 存有土壤含水量的tiff文件默认存放路径
+  history-data-dir: 'model5/history_data/2024.csv' # 计算降雨距平指数的历史数据默认路径
+  geojson-save-dir: 'model5/geojson/' # geojson文件保存路径
+  tif-temp-dir: 'model5/smi_tifs/temp/' # 生成geojson文件中间文件存放路径
